@@ -75,6 +75,7 @@ class MainActivity : Activity() {
             layoutDirection = android.view.View.LAYOUT_DIRECTION_LTR
         }
         layout.addView(endpoint)
+        button("بررسی اتصال سرور") { checkServer(endpoint.text.toString().trim().trimEnd('/')) }
         generate = button("تولید صدا") {
             val url = endpoint.text.toString().trim().trimEnd('/')
             val text = textInput.text.toString().trim()
@@ -105,6 +106,36 @@ class MainActivity : Activity() {
         }
         button("ذخیره خروجی") { saveOutput() }
         setContentView(ScrollView(this).apply { addView(layout) })
+    }
+
+    private fun checkServer(base: String) {
+        if (!base.startsWith("https://")) {
+            status.text = "آدرس HTTPS معتبر وارد کنید."
+            return
+        }
+        status.text = "در حال بررسی اتصال..."
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL("$base/health").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 12000
+                    readTimeout = 12000
+                }
+                if (connection.responseCode != 200) error("پاسخ سرور: ${connection.responseCode}")
+                val body = connection.inputStream.bufferedReader().use { it.readText().take(3000) }
+                val ready = org.json.JSONObject(body).optBoolean("loaded", false)
+                runOnUiThread {
+                    status.text = if (ready) "سرور متصل است و موتور مدل بارگذاری شده." else
+                        "سرور متصل است، اما موتور صدا هنوز آماده نیست."
+                    getPreferences(MODE_PRIVATE).edit().putString("server", base).apply()
+                }
+            } catch (e: Exception) {
+                runOnUiThread { status.text = "اتصال برقرار نشد: ${e.localizedMessage}" }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
     }
 
     private fun sendRequest(base: String, text: String) {
