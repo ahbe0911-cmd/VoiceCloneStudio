@@ -10,7 +10,7 @@ import threading
 app = FastAPI(title="VoiceCloneStudio API")
 _model = None
 _lock = threading.Lock()
-MODEL_NAME = os.getenv("VOICE_MODEL", "MohammadJRanjbar/ParsVoice-XTTS")
+MODEL_NAME = os.getenv("VOICE_MODEL", "MohammadJRanjbar/parsvoice-xtts-v2")
 
 @app.get("/health")
 def health():
